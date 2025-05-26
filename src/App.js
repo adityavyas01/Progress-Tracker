@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Download, Plus } from 'lucide-react';
 import Header from './components/Header';
 import Timer from './components/Timer';
@@ -24,11 +24,48 @@ import { leaderboardService } from './services/leaderboardService';
 import { authService } from './services/authService';
 import { userService } from './services/userService';
 
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">{this.state.error?.message}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const QuantTracker = () => {
   const { darkMode, toggleDarkMode } = useTheme();
   const [authUser, setAuthUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  // State management for all tracker data
+  const [error, setError] = useState(null);
   const [activePhase, setActivePhase] = useState(0);
   const [taskData, setTaskData] = useState({
     completedTasks: new Set(),
@@ -74,7 +111,7 @@ const QuantTracker = () => {
   const [showCustomTaskModal, setShowCustomTaskModal] = useState(false);
   const [customTasks, setCustomTasks] = useState([]);
   const [selectedTaskLocation, setSelectedTaskLocation] = useState(null);
-  const [userId] = useState('user123'); // Replace with actual user ID from auth
+  const [userId] = useState('user123');
 
   // Timer functionality
   const { timer, startTimer, pauseTimer, stopTimer } = useTimer((newTime) => {
@@ -88,48 +125,93 @@ const QuantTracker = () => {
     subscribeToProgress 
   } = useFirebase(authUser?.uid || 'guest');
 
-  // Move all useEffect hooks to the top level
+  // Memoize handlers to prevent unnecessary re-renders
+  const handleTaskCompletion = useCallback(async (taskId, task) => {
+    try {
+      await notificationService.createTaskCompletionNotification(authUser.uid, task);
+    } catch (error) {
+      console.error('Error creating task completion notification:', error);
+    }
+  }, [authUser]);
+
+  const handleStreakUpdate = useCallback(async (streak) => {
+    try {
+      await notificationService.createStreakNotification(authUser.uid, streak);
+    } catch (error) {
+      console.error('Error creating streak notification:', error);
+    }
+  }, [authUser]);
+
+  const handleAchievementUnlock = useCallback(async (achievement) => {
+    try {
+      await notificationService.createAchievementNotification(authUser.uid, achievement);
+    } catch (error) {
+      console.error('Error creating achievement notification:', error);
+    }
+  }, [authUser]);
+
+  // Auth state change effect
   useEffect(() => {
+    console.log('Setting up auth state listener...');
     const unsubscribe = authService.onAuthStateChange(async (user) => {
-      if (user) {
-        const userData = await authService.getCurrentUser();
-        setAuthUser(userData);
-        // Load user preferences
-        const preferences = await authService.getUserPreferences(user.uid);
-        if (preferences) {
-          toggleDarkMode(preferences.darkMode);
+      console.log('Auth state changed:', user);
+      try {
+        if (user) {
+          const userData = await authService.getCurrentUser();
+          console.log('User data loaded:', userData);
+          setAuthUser(userData);
+          const preferences = await authService.getUserPreferences(user.uid);
+          if (preferences) {
+            toggleDarkMode(preferences.darkMode);
+          }
+        } else {
+          setAuthUser(null);
         }
-      } else {
-        setAuthUser(null);
+      } catch (err) {
+        console.error('Error in auth state change:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      console.log('Cleaning up auth state listener...');
+      unsubscribe();
+    };
+  }, [toggleDarkMode]);
 
+  // Load user data effect
   useEffect(() => {
     const loadData = async () => {
       if (authUser) {
-        const data = await getProgress();
-        if (data) {
-          setTaskData({
-            ...taskData,
-            completedTasks: new Set(data.completedTasks || []),
-            dailyProgress: data.dailyProgress || {},
-            weeklyGoals: data.weeklyGoals || {},
-            totalHours: data.totalHours || 0,
-            currentStreak: data.currentStreak || 0,
-            startDate: data.startDate || new Date().toISOString().split('T')[0],
-            notes: data.notes || {},
-            achievements: new Set(data.achievements || [])
-          });
+        try {
+          console.log('Loading user data...');
+          const data = await getProgress();
+          console.log('Progress data loaded:', data);
+          if (data) {
+            setTaskData(prev => ({
+              ...prev,
+              completedTasks: new Set(data.completedTasks || []),
+              dailyProgress: data.dailyProgress || {},
+              weeklyGoals: data.weeklyGoals || {},
+              totalHours: data.totalHours || 0,
+              currentStreak: data.currentStreak || 0,
+              startDate: data.startDate || new Date().toISOString().split('T')[0],
+              notes: data.notes || {},
+              achievements: new Set(data.achievements || [])
+            }));
+          }
+        } catch (err) {
+          console.error('Error loading user data:', err);
+          setError(err.message);
         }
       }
     };
     loadData();
-  }, [authUser]);
+  }, [authUser, getProgress]);
 
+  // Subscribe to progress updates
   useEffect(() => {
     const unsubscribe = subscribeToProgress((data) => {
       if (data) {
@@ -146,8 +228,9 @@ const QuantTracker = () => {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [subscribeToProgress]);
 
+  // Load custom tasks
   useEffect(() => {
     const loadCustomTasks = async () => {
       if (authUser) {
@@ -162,6 +245,7 @@ const QuantTracker = () => {
     loadCustomTasks();
   }, [authUser]);
 
+  // Check streak
   useEffect(() => {
     const checkStreak = () => {
       if (authUser) {
@@ -195,7 +279,28 @@ const QuantTracker = () => {
     };
     
     checkStreak();
-  }, [taskData.lastActiveDate, authUser]);
+  }, [taskData.lastActiveDate, authUser, handleStreakUpdate]);
+
+  // Update leaderboard
+  useEffect(() => {
+    const updateLeaderboard = async () => {
+      if (authUser) {
+        try {
+          await leaderboardService.updateScore(authUser.uid, {
+            name: authUser.displayName || 'Anonymous',
+            completedTasks: taskData.completedTasks,
+            totalHours: taskData.totalHours,
+            currentStreak: taskData.currentStreak,
+            achievements: taskData.achievements
+          });
+        } catch (error) {
+          console.error('Error updating leaderboard:', error);
+        }
+      }
+    };
+
+    updateLeaderboard();
+  }, [taskData.completedTasks, taskData.totalHours, taskData.currentStreak, taskData.achievements, authUser]);
 
   useEffect(() => {
     const scheduleDailyReminder = () => {
@@ -220,26 +325,6 @@ const QuantTracker = () => {
     scheduleDailyReminder();
   }, [authUser]);
 
-  useEffect(() => {
-    const updateLeaderboard = async () => {
-      if (authUser) {
-        try {
-          await leaderboardService.updateScore(authUser.uid, {
-            name: user.name,
-            completedTasks: taskData.completedTasks,
-            totalHours: taskData.totalHours,
-            currentStreak: taskData.currentStreak,
-            achievements: taskData.achievements
-          });
-        } catch (error) {
-          console.error('Error updating leaderboard:', error);
-        }
-      }
-    };
-
-    updateLeaderboard();
-  }, [taskData.completedTasks, taskData.totalHours, taskData.currentStreak, taskData.achievements, authUser]);
-
   const handleLogin = async (user) => {
     setAuthUser(user);
     // Initialize user data
@@ -249,31 +334,6 @@ const QuantTracker = () => {
   const handleLogout = async () => {
     await authService.signOut();
     setAuthUser(null);
-  };
-
-  // Add notification handlers
-  const handleTaskCompletion = async (taskId, task) => {
-    try {
-      await notificationService.createTaskCompletionNotification(authUser.uid, task);
-    } catch (error) {
-      console.error('Error creating task completion notification:', error);
-    }
-  };
-
-  const handleStreakUpdate = async (streak) => {
-    try {
-      await notificationService.createStreakNotification(authUser.uid, streak);
-    } catch (error) {
-      console.error('Error creating streak notification:', error);
-    }
-  };
-
-  const handleAchievementUnlock = async (achievement) => {
-    try {
-      await notificationService.createAchievementNotification(authUser.uid, achievement);
-    } catch (error) {
-      console.error('Error creating achievement notification:', error);
-    }
   };
 
   // Task management
@@ -395,6 +455,23 @@ const QuantTracker = () => {
 
     return category.tasks[taskIdx];
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -689,11 +766,13 @@ const QuantTracker = () => {
   );
 };
 
-// Wrap the app with ThemeProvider
+// Wrap the app with ErrorBoundary and ThemeProvider
 const App = () => (
-  <ThemeProvider>
-    <QuantTracker />
-  </ThemeProvider>
+  <ErrorBoundary>
+    <ThemeProvider>
+      <QuantTracker />
+    </ThemeProvider>
+  </ErrorBoundary>
 );
 
 export default App;

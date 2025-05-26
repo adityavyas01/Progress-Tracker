@@ -4,24 +4,43 @@ import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID
+    apiKey: "AIzaSyCOiX8x_adK6F0_HGl2qw0z2eutUae10Pk",
+    authDomain: "goalhft.firebaseapp.com",
+    projectId: "goalhft",
+    storageBucket: "goalhft.firebasestorage.app",
+    messagingSenderId: "958598471963",
+    appId: "1:958598471963:web:19bbd875fd9ceb0d90b3be",
+    measurementId: "G-70EFVJLH1H"
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app;
+let db;
+let auth;
+let storage;
 
-// Initialize Firestore
-const db = getFirestore(app);
+try {
+  // Check if Firebase is already initialized
+  if (!app) {
+    app = initializeApp(firebaseConfig);
+    console.log('Firebase app initialized successfully');
+  }
 
-// Initialize Auth
-const auth = getAuth(app);
+  // Initialize services
+  db = getFirestore(app);
+  auth = getAuth(app);
+  storage = getStorage(app);
 
-// Initialize Storage
-const storage = getStorage(app);
+  // Verify initialization
+  if (!db || !auth || !storage) {
+    throw new Error('Failed to initialize Firebase services');
+  }
+
+  console.log('All Firebase services initialized successfully');
+} catch (error) {
+  console.error('Error initializing Firebase:', error);
+  // You might want to show a user-friendly error message here
+  throw error;
+}
 
 export { app, db, auth, storage }; 
