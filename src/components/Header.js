@@ -16,7 +16,7 @@ const Header = ({
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-4xl font-bold mb-4 flex items-center gap-3">
-              🚀 Tier 3 → HFT Journey Tracker
+              HFT Journey Tracker
               <button 
                 onClick={onHelpClick}
                 className="text-white/80 hover:text-white transition-colors"

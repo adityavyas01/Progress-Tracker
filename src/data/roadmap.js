@@ -1,4 +1,4 @@
-import { Code, Brain, Target, TrendingUp, BookOpen, Network, Users, Award } from 'lucide-react';
+import { Code, Brain } from 'lucide-react';
 
 export const roadmapPhases = [
   {

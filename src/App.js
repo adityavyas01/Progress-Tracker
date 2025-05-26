@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, CheckCircle, Circle, Clock, Target, TrendingUp, Users, BookOpen, Code, Brain, Network, Award, Download, Play, Pause, RotateCcw, BarChart2, Settings, Bell, Star, Trophy, Zap, Bookmark, Share2, HelpCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Download } from 'lucide-react';
 import Header from './components/Header';
 import Timer from './components/Timer';
 import TaskCard from './components/TaskCard';
@@ -9,7 +9,7 @@ import StudyGroup from './components/StudyGroup';
 import Analytics from './components/Analytics';
 import Resources from './components/Resources';
 import { roadmapPhases, companyTargets } from './data/roadmap';
-import { formatTime, calculateTimeSpent } from './utils/timer';
+import { formatTime } from './utils/timer';
 import { useTimer } from './hooks/useTimer';
 
 const QuantTracker = () => {

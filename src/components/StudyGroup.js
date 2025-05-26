@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Calendar, Clock, MessageSquare, Video, Mic, MicOff, VideoOff } from 'lucide-react';
+import { Users, Calendar, Mic, MicOff, Video, VideoOff } from 'lucide-react';
 
 const StudyGroup = ({
   group,

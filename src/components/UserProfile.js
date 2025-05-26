@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Users, Trophy, Target, Calendar } from 'lucide-react';
+import { Users, Trophy, Target, Calendar, Code, Brain } from 'lucide-react';
 
 const UserProfile = ({ 
   user,

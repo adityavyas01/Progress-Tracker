@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Book, Video, Code, Brain, Target, ExternalLink, Search, Filter } from 'lucide-react';
+import { Book, Video, Code, Brain, Target, ExternalLink, Search } from 'lucide-react';
 
 const Resources = () => {
   const [searchQuery, setSearchQuery] = useState('');

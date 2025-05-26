@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart2, TrendingUp, Calendar, Target, Clock, Award } from 'lucide-react';
+import { BarChart2, TrendingUp, Clock, Calendar, Award } from 'lucide-react';
 
 const Analytics = ({
   stats,
