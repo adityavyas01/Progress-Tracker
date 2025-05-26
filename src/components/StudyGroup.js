@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Calendar, Mic, MicOff, Video, VideoOff } from 'lucide-react';
+import { Users, Mic, MicOff, Video, VideoOff, MessageSquare } from 'lucide-react';
 
 const StudyGroup = ({
   group,
@@ -26,7 +26,7 @@ const StudyGroup = ({
             <p className="text-gray-600 mt-1">{group.description}</p>
           </div>
           <div className="flex items-center gap-2 text-gray-600">
-            <Calendar className="w-4 h-4" />
+            <MessageSquare className="w-4 h-4" />
             <span>{group.schedule}</span>
           </div>
         </div>

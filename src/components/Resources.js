@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Book, Video, Code, Brain, Target, ExternalLink, Search } from 'lucide-react';
+import { Book, Video, FileText, ExternalLink } from 'lucide-react';
 
 const Resources = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -7,9 +7,9 @@ const Resources = () => {
 
   const categories = [
     { id: 'all', name: 'All Resources', icon: <Book className="w-5 h-5" /> },
-    { id: 'dsa', name: 'Data Structures & Algorithms', icon: <Code className="w-5 h-5" /> },
-    { id: 'math', name: 'Mathematics', icon: <Brain className="w-5 h-5" /> },
-    { id: 'trading', name: 'Trading & Finance', icon: <Target className="w-5 h-5" /> },
+    { id: 'dsa', name: 'Data Structures & Algorithms', icon: <FileText className="w-5 h-5" /> },
+    { id: 'math', name: 'Mathematics', icon: <Book className="w-5 h-5" /> },
+    { id: 'trading', name: 'Trading & Finance', icon: <Book className="w-5 h-5" /> },
     { id: 'videos', name: 'Video Courses', icon: <Video className="w-5 h-5" /> }
   ];
 
@@ -94,7 +94,6 @@ const Resources = () => {
       {/* Search and Filter */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="flex-1 relative">
-          <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Search resources..."

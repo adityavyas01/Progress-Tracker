@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Trophy, Target, Calendar, Code, Brain } from 'lucide-react';
+import { User, Target, Calendar, Award } from 'lucide-react';
 
 const UserProfile = ({ 
   user,
@@ -66,7 +66,7 @@ const UserProfile = ({
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Users className="w-5 h-5" />
+            <User className="w-5 h-5" />
             Study Buddies
           </h3>
           <button 
@@ -97,7 +97,7 @@ const UserProfile = ({
       {/* Recent Achievements */}
       <div className="mt-8">
         <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-          <Trophy className="w-5 h-5" />
+          <Award className="w-5 h-5" />
           Recent Achievements
         </h3>
         <div className="space-y-2">
