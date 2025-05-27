@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { db } from '../config/firebase';
 import { collection, addDoc, query, where, getDocs, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 
 const BOOKMARKS_COLLECTION = 'bookmarks';

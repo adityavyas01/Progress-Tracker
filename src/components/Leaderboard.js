@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Trophy, CheckCircle, Clock, Flame, Star, Medal } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Trophy, CheckCircle, Clock, Flame, Star, Medal, TrendingUp } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { leaderboardService } from '../services/leaderboardService';
 
@@ -10,18 +10,26 @@ const Leaderboard = ({ userId }) => {
   const [categories, setCategories] = useState([]);
   const [userRank, setUserRank] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [previousRanks, setPreviousRanks] = useState({});
 
-  useEffect(() => {
-    loadLeaderboardData();
-  }, [activeCategory]);
-
-  const loadLeaderboardData = async () => {
+  const loadLeaderboardData = useCallback(async () => {
     try {
+      setError(null);
       setLoading(true);
       const [categoryData, userRankData] = await Promise.all([
         leaderboardService.getCategoryLeaderboard(activeCategory),
         leaderboardService.getUserRank(userId)
       ]);
+      
+      // Store previous ranks for trend calculation
+      setPreviousRanks(prev => {
+        const newRanks = { ...prev };
+        categoryData.forEach(user => {
+          newRanks[user.id] = user.rank;
+        });
+        return newRanks;
+      });
       
       setLeaderboardData(categoryData);
       setUserRank(userRankData);
@@ -30,12 +38,17 @@ const Leaderboard = ({ userId }) => {
         const cats = await leaderboardService.getLeaderboardCategories();
         setCategories(cats);
       }
-    } catch (error) {
-      console.error('Error loading leaderboard data:', error);
+    } catch (err) {
+      console.error('Error loading leaderboard data:', err);
+      setError('Failed to load leaderboard data. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeCategory, userId, categories]);
+
+  useEffect(() => {
+    loadLeaderboardData();
+  }, [loadLeaderboardData]);
 
   const getCategoryIcon = (categoryId) => {
     switch (categoryId) {
@@ -82,11 +95,42 @@ const Leaderboard = ({ userId }) => {
     }
   };
 
+  const getTrendIndicator = (userId) => {
+    const currentRank = leaderboardData.find(user => user.id === userId)?.rank;
+    const previousRank = previousRanks[userId];
+    
+    if (!previousRank || !currentRank) return null;
+    
+    const difference = previousRank - currentRank;
+    if (difference > 0) {
+      return (
+        <div className="flex items-center text-green-500">
+          <TrendingUp className="w-4 h-4" />
+          <span className="text-xs ml-1">+{difference}</span>
+        </div>
+      );
+    } else if (difference < 0) {
+      return (
+        <div className="flex items-center text-red-500">
+          <TrendingUp className="w-4 h-4 transform rotate-180" />
+          <span className="text-xs ml-1">{difference}</span>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+    <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden ${darkMode ? 'border border-gray-700' : ''}`}>
       <div className="p-6">
         <h2 className="text-2xl font-bold mb-6 dark:text-white">Leaderboard</h2>
         
+        {error && (
+          <div className={`p-4 rounded-lg mb-6 ${darkMode ? 'bg-red-900/20 text-red-200' : 'bg-red-50 text-red-700'}`}>
+            {error}
+          </div>
+        )}
+
         {/* Category Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {categories.map(category => (
@@ -114,11 +158,11 @@ const Leaderboard = ({ userId }) => {
           <>
             {/* User's Rank */}
             {userRank && (
-              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className={`mb-6 p-4 rounded-lg ${darkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-blue-700 dark:text-blue-300">Your Rank</h3>
-                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">#{userRank}</p>
+                    <h3 className={`font-semibold ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>Your Rank</h3>
+                    <p className={`text-2xl font-bold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>#{userRank}</p>
                   </div>
                   <Trophy className="w-8 h-8 text-blue-500" />
                 </div>
@@ -132,15 +176,15 @@ const Leaderboard = ({ userId }) => {
                   key={user.id}
                   className={`flex items-center gap-4 p-4 rounded-lg transition-colors ${
                     user.id === userId
-                      ? 'bg-blue-50 dark:bg-blue-900/20'
-                      : 'bg-gray-50 dark:bg-gray-700/50'
+                      ? darkMode ? 'bg-blue-900/20' : 'bg-blue-50'
+                      : darkMode ? 'bg-gray-700/50' : 'bg-gray-50'
                   }`}
                 >
                   <div className="flex-shrink-0 w-8">
                     {index < 3 ? (
                       getMedalIcon(index)
                     ) : (
-                      <span className="text-lg font-bold text-gray-500 dark:text-gray-400">
+                      <span className={`text-lg font-bold ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                         #{index + 1}
                       </span>
                     )}
@@ -163,6 +207,7 @@ const Leaderboard = ({ userId }) => {
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         {user.streak} day streak
                       </span>
+                      {getTrendIndicator(user.id)}
                     </div>
                   </div>
                 </div>

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Clock, Star, Trash2, ExternalLink } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
 
 const TaskCard = ({
   task,
@@ -15,8 +14,6 @@ const TaskCard = ({
   onDelete,
   isCustom
 }) => {
-  const { darkMode } = useTheme();
-
   return (
     <div className={`p-4 rounded-lg border ${
       isCompleted

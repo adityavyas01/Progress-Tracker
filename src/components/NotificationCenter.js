@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, X, CheckCircle, Flame, Trophy, Target, Clock } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { notificationService } from '../services/notificationService';
@@ -6,22 +6,29 @@ import { notificationService } from '../services/notificationService';
 const NotificationCenter = ({ userId }) => {
   const { darkMode } = useTheme();
   const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    loadNotifications();
+  const loadNotifications = useCallback(async () => {
+    try {
+      setError(null);
+      setLoading(true);
+      const data = await notificationService.getNotifications(userId);
+      setNotifications(data);
+      setUnreadCount(data.filter(n => !n.read).length);
+    } catch (err) {
+      console.error('Error loading notifications:', err);
+      setError('Failed to load notifications. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }, [userId]);
 
-  const loadNotifications = async () => {
-    try {
-      const userNotifications = await notificationService.getNotifications(userId);
-      setNotifications(userNotifications);
-      setUnreadCount(userNotifications.filter(n => !n.read).length);
-    } catch (error) {
-      console.error('Error loading notifications:', error);
-    }
-  };
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
 
   const handleMarkAsRead = async (notificationId) => {
     try {
@@ -70,7 +77,9 @@ const NotificationCenter = ({ userId }) => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className={`relative p-2 rounded-full transition-colors ${
+          darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+        }`}
       >
         <Bell className="w-6 h-6 text-gray-600 dark:text-gray-300" />
         {unreadCount > 0 && (
@@ -81,13 +90,21 @@ const NotificationCenter = ({ userId }) => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className={`absolute right-0 mt-2 w-80 rounded-lg shadow-lg border z-50 ${
+          darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+        }`}>
+          <div className={`p-4 border-b ${
+            darkMode ? 'border-gray-700' : 'border-gray-200'
+          }`}>
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold dark:text-white">Notifications</h3>
+              <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Notifications
+              </h3>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                className={`p-1 rounded-full transition-colors ${
+                  darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                }`}
               >
                 <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
               </button>
@@ -95,16 +112,28 @@ const NotificationCenter = ({ userId }) => {
           </div>
 
           <div className="max-h-96 overflow-y-auto">
-            {notifications.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+            {error && (
+              <div className={`p-4 ${darkMode ? 'bg-red-900/20 text-red-200' : 'bg-red-50 text-red-700'}`}>
+                {error}
+              </div>
+            )}
+
+            {loading ? (
+              <div className="p-4 text-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className={`p-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                 No notifications yet
               </div>
             ) : (
               notifications.map(notification => (
                 <div
                   key={notification.id}
-                  className={`p-4 border-b border-gray-200 dark:border-gray-700 ${
-                    !notification.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                  className={`p-4 border-b ${
+                    darkMode ? 'border-gray-700' : 'border-gray-200'
+                  } ${
+                    !notification.read ? darkMode ? 'bg-blue-900/20' : 'bg-blue-50' : ''
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -112,13 +141,13 @@ const NotificationCenter = ({ userId }) => {
                       {getNotificationIcon(notification.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 dark:text-white">
+                      <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                         {notification.title}
                       </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                         {notification.message}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                      <p className={`text-xs mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
                         {new Date(notification.createdAt).toLocaleString()}
                       </p>
                     </div>
@@ -126,7 +155,9 @@ const NotificationCenter = ({ userId }) => {
                       {!notification.read && (
                         <button
                           onClick={() => handleMarkAsRead(notification.id)}
-                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                          className={`p-1 rounded-full transition-colors ${
+                            darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                          }`}
                           title="Mark as read"
                         >
                           <CheckCircle className="w-4 h-4 text-gray-500 dark:text-gray-400" />
@@ -134,7 +165,9 @@ const NotificationCenter = ({ userId }) => {
                       )}
                       <button
                         onClick={() => handleDelete(notification.id)}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                        className={`p-1 rounded-full transition-colors ${
+                          darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                        }`}
                         title="Delete"
                       >
                         <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />

@@ -4,15 +4,11 @@ import Header from './components/Header';
 import Timer from './components/Timer';
 import TaskCard from './components/TaskCard';
 import HelpModal from './components/HelpModal';
-import UserProfile from './components/UserProfile';
-import StudyGroup from './components/StudyGroup';
-import Analytics from './components/Analytics';
-import Resources from './components/Resources';
-import CustomTaskModal from './components/CustomTaskModal';
 import NotificationCenter from './components/NotificationCenter';
 import Leaderboard from './components/Leaderboard';
 import BookmarkList from './components/BookmarkList';
 import Login from './components/Login';
+import CustomTaskModal from './components/CustomTaskModal';
 import { roadmapPhases, companyTargets } from './data/roadmap';
 import { formatTime } from './utils/timer';
 import { useTimer } from './hooks/useTimer';
@@ -22,7 +18,6 @@ import { taskService } from './services/taskService';
 import { notificationService } from './services/notificationService';
 import { leaderboardService } from './services/leaderboardService';
 import { authService } from './services/authService';
-import { userService } from './services/userService';
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -80,36 +75,8 @@ const QuantTracker = () => {
   const [favoriteTasks, setFavoriteTasks] = useState(new Set());
   const [showHelp, setShowHelp] = useState(false);
   const [activeTab, setActiveTab] = useState('tasks');
-  const [user] = useState({
-    name: 'Your Name',
-    bio: 'Full Stack Developer transitioning to Quant Trading',
-    targetCompany: 'Graviton Research Capital',
-    startDate: new Date().toISOString()
-  });
-  const [friends] = useState([
-    { id: 1, name: 'Friend 1', progress: 45 },
-    { id: 2, name: 'Friend 2', progress: 30 },
-    { id: 3, name: 'Friend 3', progress: 60 }
-  ]);
-  const [studyGroup, setStudyGroup] = useState({
-    name: 'Quant Study Group',
-    description: 'Daily study sessions for quant preparation',
-    schedule: 'Daily 6-8 PM IST',
-    members: [
-      { id: 1, name: 'You', isInCall: false, progress: 40 },
-      { id: 2, name: 'Friend 1', isInCall: false, progress: 45 },
-      { id: 3, name: 'Friend 2', isInCall: false, progress: 30 },
-      { id: 4, name: 'Friend 3', isInCall: false, progress: 60 }
-    ]
-  });
-  const [callState, setCallState] = useState({
-    isInCall: false,
-    isMuted: false,
-    isVideoOff: false
-  });
-  const [messages, setMessages] = useState([]);
-  const [showCustomTaskModal, setShowCustomTaskModal] = useState(false);
   const [customTasks, setCustomTasks] = useState([]);
+  const [showCustomTaskModal, setShowCustomTaskModal] = useState(false);
   const [selectedTaskLocation, setSelectedTaskLocation] = useState(null);
   const [userId] = useState('user123');
 
@@ -456,6 +423,20 @@ const QuantTracker = () => {
     return category.tasks[taskIdx];
   };
 
+  // Add button to create custom task in each category
+  const renderAddCustomTaskButton = (phaseId, weekId, dayId, category) => (
+    <button
+      onClick={() => {
+        setSelectedTaskLocation({ phaseId, weekId, dayId, category });
+        setShowCustomTaskModal(true);
+      }}
+      className="mt-2 px-3 py-1 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-1"
+    >
+      <Plus className="w-4 h-4" />
+      Add Custom Task
+    </button>
+  );
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -701,6 +682,7 @@ const QuantTracker = () => {
                                         isCustom
                                       />
                                     ))}
+                                  {renderAddCustomTaskButton(activePhase, weekIdx, dayIdx, category.name)}
                                 </div>
                               </div>
                             ))}
@@ -755,11 +737,15 @@ const QuantTracker = () => {
       {showCustomTaskModal && (
         <CustomTaskModal
           isOpen={showCustomTaskModal}
-          onClose={() => setShowCustomTaskModal(false)}
+          onClose={() => {
+            setShowCustomTaskModal(false);
+            setSelectedTaskLocation(null);
+          }}
           onSave={handleCreateCustomTask}
           phaseId={selectedTaskLocation?.phaseId}
           weekId={selectedTaskLocation?.weekId}
           dayId={selectedTaskLocation?.dayId}
+          category={selectedTaskLocation?.category}
         />
       )}
     </div>

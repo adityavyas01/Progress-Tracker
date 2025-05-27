@@ -4,10 +4,12 @@ import {
   GoogleAuthProvider, 
   GithubAuthProvider,
   signOut as firebaseSignOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../config/firebase';
 
 const auth = getAuth();
 
@@ -113,6 +115,30 @@ export const authService = {
       await setDoc(userRef, { preferences }, { merge: true });
     } catch (error) {
       console.error('Error updating user preferences:', error);
+      throw error;
+    }
+  },
+
+  // Sign in with email and password
+  async signInWithEmail(email, password) {
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      await this.createOrUpdateUser(result.user);
+      return result.user;
+    } catch (error) {
+      console.error('Error signing in with email:', error);
+      throw error;
+    }
+  },
+
+  // Sign up with email and password
+  async signUpWithEmail(email, password) {
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      await this.createOrUpdateUser(result.user);
+      return result.user;
+    } catch (error) {
+      console.error('Error signing up with email:', error);
       throw error;
     }
   }

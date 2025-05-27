@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Tag, ExternalLink, Edit2, Trash2, Plus } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { bookmarkService } from '../services/bookmarkService';
@@ -13,28 +13,25 @@ const BookmarkList = ({ userId }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadBookmarks = useCallback(async () => {
+    try {
+      setError(null);
+      const data = await bookmarkService.getBookmarks(userId);
+      setBookmarks(data);
+    } catch (err) {
+      console.error('Error loading bookmarks:', err);
+      setError('Failed to load bookmarks. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
 
   useEffect(() => {
     loadBookmarks();
     loadCategories();
-  }, [userId, selectedCategory]);
-
-  const loadBookmarks = async () => {
-    try {
-      setLoading(true);
-      let fetchedBookmarks;
-      if (selectedCategory === 'all') {
-        fetchedBookmarks = await bookmarkService.getUserBookmarks(userId);
-      } else {
-        fetchedBookmarks = await bookmarkService.getBookmarksByCategory(userId, selectedCategory);
-      }
-      setBookmarks(fetchedBookmarks);
-    } catch (error) {
-      console.error('Error loading bookmarks:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [loadBookmarks, selectedCategory]);
 
   const loadCategories = async () => {
     try {
@@ -78,6 +75,12 @@ const BookmarkList = ({ userId }) => {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className={`p-4 rounded-lg ${darkMode ? 'bg-red-900/20 text-red-200' : 'bg-red-50 text-red-700'}`}>
+          {error}
+        </div>
+      )}
+      
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex-1 w-full sm:w-auto">
           <div className="relative">
@@ -122,7 +125,7 @@ const BookmarkList = ({ userId }) => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
         </div>
       ) : filteredBookmarks.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+        <div className={`text-center py-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
           No bookmarks found
         </div>
       ) : (
@@ -130,7 +133,9 @@ const BookmarkList = ({ userId }) => {
           {filteredBookmarks.map(bookmark => (
             <div
               key={bookmark.id}
-              className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700"
+              className={`bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border ${
+                darkMode ? 'border-gray-700' : 'border-gray-200'
+              }`}
             >
               <div className="flex justify-between items-start mb-2">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">

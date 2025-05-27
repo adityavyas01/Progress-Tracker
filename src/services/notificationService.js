@@ -1,5 +1,17 @@
-import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, orderBy, limit, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  Timestamp,
+  limit
+} from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 const NOTIFICATIONS_COLLECTION = 'notifications';
 
@@ -7,11 +19,13 @@ export const notificationService = {
   // Create a new notification
   async createNotification(userId, notification) {
     try {
-      const docRef = await addDoc(collection(db, NOTIFICATIONS_COLLECTION), {
+      const notificationsRef = collection(db, NOTIFICATIONS_COLLECTION);
+      const docRef = await addDoc(notificationsRef, {
         userId,
         ...notification,
-        createdAt: new Date().toISOString(),
-        read: false
+        read: false,
+        createdAt: Timestamp.now(),
+        readAt: null
       });
       return { id: docRef.id, ...notification };
     } catch (error) {
@@ -21,13 +35,14 @@ export const notificationService = {
   },
 
   // Get user's notifications
-  async getNotifications(userId, limit = 20) {
+  async getNotifications(userId, limitCount = 20) {
     try {
+      const notificationsRef = collection(db, NOTIFICATIONS_COLLECTION);
       const q = query(
-        collection(db, NOTIFICATIONS_COLLECTION),
+        notificationsRef,
         where('userId', '==', userId),
         orderBy('createdAt', 'desc'),
-        limit(limit)
+        limit(limitCount)
       );
       
       const querySnapshot = await getDocs(q);
@@ -47,9 +62,9 @@ export const notificationService = {
       const notificationRef = doc(db, NOTIFICATIONS_COLLECTION, notificationId);
       await updateDoc(notificationRef, {
         read: true,
-        readAt: new Date().toISOString()
+        readAt: Timestamp.now()
       });
-      return notificationId;
+      return { success: true };
     } catch (error) {
       console.error('Error marking notification as read:', error);
       throw error;
@@ -61,7 +76,7 @@ export const notificationService = {
     try {
       const notificationRef = doc(db, NOTIFICATIONS_COLLECTION, notificationId);
       await deleteDoc(notificationRef);
-      return notificationId;
+      return { success: true };
     } catch (error) {
       console.error('Error deleting notification:', error);
       throw error;

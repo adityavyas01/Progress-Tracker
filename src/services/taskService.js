@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { db } from '../config/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs } from 'firebase/firestore';
 
 const CUSTOM_TASKS_COLLECTION = 'customTasks';

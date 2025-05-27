@@ -1,5 +1,15 @@
-import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  orderBy,
+  getDocs,
+  doc,
+  updateDoc,
+  setDoc,
+  getDoc,
+  limit
+} from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 const LEADERBOARD_COLLECTION = 'leaderboard';
 
@@ -9,17 +19,26 @@ export const leaderboardService = {
     try {
       const score = this.calculateScore(userData);
       const leaderboardRef = doc(db, LEADERBOARD_COLLECTION, userId);
+      const leaderboardDoc = await getDoc(leaderboardRef);
       
-      await updateDoc(leaderboardRef, {
+      const leaderboardData = {
         userId,
         name: userData.name,
         score,
-        completedTasks: userData.completedTasks,
+        completedTasks: userData.completedTasks.size,
         totalHours: userData.totalHours,
         streak: userData.currentStreak,
-        achievements: userData.achievements,
+        achievements: userData.achievements.size,
         updatedAt: new Date().toISOString()
-      });
+      };
+
+      if (!leaderboardDoc.exists()) {
+        // Create new document if it doesn't exist
+        await setDoc(leaderboardRef, leaderboardData);
+      } else {
+        // Update existing document
+        await updateDoc(leaderboardRef, leaderboardData);
+      }
       
       return { userId, score };
     } catch (error) {
@@ -51,18 +70,11 @@ export const leaderboardService = {
   // Get user's rank
   async getUserRank(userId) {
     try {
-      const userDoc = await getDocs(doc(db, LEADERBOARD_COLLECTION, userId));
-      if (!userDoc.exists()) return null;
-
-      const userScore = userDoc.data().score;
-      
-      const q = query(
-        collection(db, LEADERBOARD_COLLECTION),
-        where('score', '>', userScore)
-      );
-      
-      const higherScores = await getDocs(q);
-      return higherScores.size + 1;
+      const leaderboardRef = collection(db, LEADERBOARD_COLLECTION);
+      const q = query(leaderboardRef, orderBy('score', 'desc'));
+      const snapshot = await getDocs(q);
+      const userIndex = snapshot.docs.findIndex(doc => doc.id === userId);
+      return userIndex + 1;
     } catch (error) {
       console.error('Error getting user rank:', error);
       throw error;
@@ -73,8 +85,8 @@ export const leaderboardService = {
   calculateScore(userData) {
     const taskScore = userData.completedTasks.size * 10;
     const hourScore = userData.totalHours * 5;
-    const streakScore = userData.currentStreak * 15;
-    const achievementScore = userData.achievements.size * 25;
+    const streakScore = userData.currentStreak * 2;
+    const achievementScore = userData.achievements.size * 20;
     
     return taskScore + hourScore + streakScore + achievementScore;
   },
@@ -82,48 +94,31 @@ export const leaderboardService = {
   // Get leaderboard categories
   async getLeaderboardCategories() {
     return [
-      { id: 'overall', name: 'Overall', icon: 'trophy' },
-      { id: 'tasks', name: 'Tasks Completed', icon: 'check-circle' },
-      { id: 'hours', name: 'Hours Studied', icon: 'clock' },
-      { id: 'streak', name: 'Current Streak', icon: 'flame' },
-      { id: 'achievements', name: 'Achievements', icon: 'star' }
+      { id: 'overall', name: 'Overall' },
+      { id: 'tasks', name: 'Tasks Completed' },
+      { id: 'hours', name: 'Hours Spent' },
+      { id: 'streak', name: 'Current Streak' },
+      { id: 'achievements', name: 'Achievements' }
     ];
   },
 
   // Get category-specific leaderboard
-  async getCategoryLeaderboard(category, limit = 10) {
+  async getCategoryLeaderboard(category) {
     try {
-      let orderField;
-      switch (category) {
-        case 'tasks':
-          orderField = 'completedTasks';
-          break;
-        case 'hours':
-          orderField = 'totalHours';
-          break;
-        case 'streak':
-          orderField = 'streak';
-          break;
-        case 'achievements':
-          orderField = 'achievements';
-          break;
-        default:
-          orderField = 'score';
-      }
-
+      const leaderboardRef = collection(db, LEADERBOARD_COLLECTION);
       const q = query(
-        collection(db, LEADERBOARD_COLLECTION),
-        orderBy(orderField, 'desc'),
-        limit(limit)
+        leaderboardRef,
+        orderBy(category === 'overall' ? 'score' : category, 'desc'),
+        limit(100)
       );
-      
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map((doc, index) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        rank: index + 1
       }));
     } catch (error) {
-      console.error('Error getting category leaderboard:', error);
+      console.error('Error getting leaderboard:', error);
       throw error;
     }
   }
