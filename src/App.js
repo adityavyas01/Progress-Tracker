@@ -120,30 +120,43 @@ const QuantTracker = () => {
   // Auth state change effect
   useEffect(() => {
     console.log('Setting up auth state listener...');
+    let isSubscribed = true;
+    
     const unsubscribe = authService.onAuthStateChange(async (user) => {
+      if (!isSubscribed) return;
+      
       console.log('Auth state changed:', user);
       try {
         if (user) {
           const userData = await authService.getCurrentUser();
           console.log('User data loaded:', userData);
-          setAuthUser(userData);
-          const preferences = await authService.getUserPreferences(user.uid);
-          if (preferences) {
-            toggleDarkMode(preferences.darkMode);
+          if (isSubscribed) {
+            setAuthUser(userData);
+            const preferences = await authService.getUserPreferences(user.uid);
+            if (preferences && isSubscribed) {
+              toggleDarkMode(preferences.darkMode);
+            }
           }
         } else {
-          setAuthUser(null);
+          if (isSubscribed) {
+            setAuthUser(null);
+          }
         }
       } catch (err) {
         console.error('Error in auth state change:', err);
-        setError(err.message);
+        if (isSubscribed) {
+          setError(err.message);
+        }
       } finally {
-        setLoading(false);
+        if (isSubscribed) {
+          setLoading(false);
+        }
       }
     });
 
     return () => {
       console.log('Cleaning up auth state listener...');
+      isSubscribed = false;
       unsubscribe();
     };
   }, [toggleDarkMode]);
